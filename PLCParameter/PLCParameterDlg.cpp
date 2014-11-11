@@ -11,87 +11,31 @@
 #endif
 
 #pragma warning(disable:4996)
-//////////////////////////////////////////////////////////////////////////
-// 控件用到的全局变量
-//////////////////////////////////////////////////////////////////////////
-enum STATIC_ID
-{
-	ID_STATIC_1 = 10000,
-	ID_STATIC_2,
-	ID_STATIC_3,
-	ID_STATIC_4,
-	ID_STATIC_5,
-	ID_STATIC_6,
-	ID_STATIC_7,
-	ID_STATIC_8,
-	ID_STATIC_9,
-	ID_STATIC_10,
-	ID_STATIC_11,
-	ID_STATIC_12,
-	ID_STATIC_13,
-	ID_STATIC_14,
-	ID_STATIC_15,
-	ID_STATIC_16,
-	ID_STATIC_17,
-	ID_STATIC_18,
-	ID_STATIC_19,
-	ID_STATIC_20,
-	ID_STATIC_21,
-	ID_STATIC_22,
-	ID_STATIC_23,
-	ID_STATIC_24,
-	ID_STATIC_25,
-	ID_STATIC_26,
-	ID_STATIC_27,
-	ID_STATIC_28,
-	ID_STATIC_29
-};
-
-enum EDIT_ID
-{
-	ID_EDIT_1 = 20000,
-	ID_EDIT_2,
-	ID_EDIT_3,
-	ID_EDIT_4,
-	ID_EDIT_5,
-	ID_EDIT_6,
-	ID_EDIT_7,
-	ID_EDIT_8,
-	ID_EDIT_9,
-	ID_EDIT_10,
-	ID_EDIT_11,
-	ID_EDIT_12,
-	ID_EDIT_13,
-	ID_EDIT_14,
-	ID_EDIT_15,
-	ID_EDIT_16,
-	ID_EDIT_17,
-	ID_EDIT_18,
-	ID_EDIT_19,
-	ID_EDIT_20,
-	ID_EDIT_21,
-	ID_EDIT_22,
-	ID_EDIT_23,
-	ID_EDIT_24,
-	ID_EDIT_25,
-	ID_EDIT_26,
-	ID_EDIT_27,
-	ID_EDIT_28,
-	ID_EDIT_29,
-};
-
 TCHAR * StaticAxisNameArray[27] = {"Kv速度增益", "Kf速度前馈", "Impulse脉冲计数", "Road角度", "SwLimitNeg负向限位开关", 
 								"SwLimitPos负向限位开关", "MaxVelocity最大速度", "MaxAcceleration最大加速度", "MaxDecelercation最大减速度", "MaxJerk最大加加速", 
 								"MaxTorque最大力矩", "MaxTorqueRamp", "TorqueTechUnitsDenom", "TorqueTechUnitsNum", "VelocityTechUnitsDenom", 
 								"VelocityTechUnitsNum", "TnCyc", "T2", "TestMode", "ReglerMode", 
 								"AxisType", "ExtEncoder", "CyclicDataInputs", "CyclicDataOutputs", "ProfileCurveChoose", 
 								"AxisModMax", "AxisModMin"};
-TCHAR * StaticSystemNameArray[27] = {"TnCyc插补周期", "Multi分频系数"};
 
-CStatic *pStaticAxis[27];
-CStatic *pStaticSystem[2];
-CEdit *pEditAxis[27];
-CEdit *pEditSystem[2];
+TCHAR * AxisValueUnit[27] = {"--", "--", "unit", "unit", "unit", 
+							"unit", "unit/s", "unit/s^2", "unit/s^2", "unit/s^3", 
+							"unit", "unit", "unit", "unit", "unit", 
+							"unit", "ms", "ms", "--", "--", 
+							"--", "--", "--", "--", "--", 
+							"--", "--" };
+TCHAR * StaticSystemNameArray[2] = {"TnCyc插补周期", "Multi分频系数"};
+TCHAR * SystemValueUnit[2] = {"ms", "--"};
+
+CStatic *pStaticAxis[27];		// 轴参数的说明信息
+CStatic *pStaticAxisUnit[27];	// 轴参数的单位
+CStatic *pStaticSystem[2];		// 系统参数的说明信息
+CStatic *pStaticSystemUnit[2];	// 系统参数的单位
+CEdit *pEditAxis[27];			// 轴参数的值
+CEdit *pEditSystem[2];			// 系统参数的值
+CButton *pButtonCopy[1];		// 复制按钮
+CButton *pButtonAxisFlag[27];	// 轴参数复选按钮
+CButton *pButtonSystemFlag[2];	// 系统参数复选按钮
 
 //////////////////////////////////////////////////////////////////////////
 
@@ -123,6 +67,7 @@ void CAboutDlg::DoDataExchange(CDataExchange* pDX)
 }
 
 BEGIN_MESSAGE_MAP(CAboutDlg, CDialog)
+
 END_MESSAGE_MAP()
 
 
@@ -147,7 +92,8 @@ BEGIN_MESSAGE_MAP(CPLCParameterDlg, CDialog)
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
 	//}}AFX_MSG_MAP
-	ON_WM_CLOSE()
+	ON_WM_CLOSE()	
+	ON_BN_CLICKED(ID_BUTTON_1, &CPLCParameterDlg::OnBtnCopy)
 END_MESSAGE_MAP()
 
 
@@ -182,10 +128,13 @@ BOOL CPLCParameterDlg::OnInitDialog()
 
 	// TODO: 在此添加额外的初始化代码
 	//////////////////////////////////////////////////////////////////////////
-	// 静态控件/编辑框控件部分
+	// 静态控件
 	//////////////////////////////////////////////////////////////////////////
-	CRect rect(10, 10, 230, 30), rectSystem(10, 630, 230, 650), 
-		rectEdit(245, 10, 465, 30), rectSystemEdit(245, 630, 465, 650);
+	//CRect rect(10, 10, 230, 30), rectSystem(10, 630, 230, 650), 
+	CRect rect(10, 20, 230, 40), rectSystem(10, 640, 230, 660), 
+		rectEdit(245, 20, 350, 40), rectSystemEdit(245, 640, 350, 660),
+		rectAxisUnit(355, 20, 415, 40), rectSystemUnit(355, 640, 415, 660),
+		rectAxisFlag(420, 20, 430, 40), rectSystemFlag(420, 640, 430, 660);
 	TCHAR LabelName [256] = {0};
 	TCHAR cNum[5] = {0};
 	for (int Num = 0; Num < 27; Num++)
@@ -195,28 +144,97 @@ BOOL CPLCParameterDlg::OnInitDialog()
 
 		sprintf(cNum, "%d. ", (Num + 1));
 		strcat(LabelName, cNum);
-		if (Num < 2)
-		{
-			strcat(LabelName, StaticSystemNameArray[Num]);
-			pStaticAxis[Num] = NewStatic(ID_STATIC_28 + Num, LabelName, rectSystem, SS_CENTER|SS_SIMPLE|SS_SUNKEN);
-			rectSystem.top += 22;
-			rectSystem.bottom += 22;
-
-			pEditAxis[Num] = NewEdit(ID_EDIT_28 + Num, rectSystemEdit, ES_CENTER);
-			rectSystemEdit.top += 22;
-			rectSystemEdit.bottom += 22;
-		}
-		SecureZeroMemory(LabelName, sizeof(LabelName));
-		strcat(LabelName, cNum);
 		strcat(LabelName, StaticAxisNameArray[Num]);
-		pStaticAxis[Num] = NewStatic(ID_STATIC_1 + Num, LabelName, rect, SS_CENTER|SS_SIMPLE|SS_SUNKEN);
+		//////////////////////////////////////////////////////////////////////////
+		// 轴参数的描述
+		//////////////////////////////////////////////////////////////////////////
+		pStaticAxis[Num] = NewStatic(ID_STATIC_1 + Num, LabelName, rect, SS_SIMPLE|SS_SUNKEN);
 		rect.top += 22;
 		rect.bottom += 22;
+		//////////////////////////////////////////////////////////////////////////
 
+		//////////////////////////////////////////////////////////////////////////
+		// 轴参数的单位
+		//////////////////////////////////////////////////////////////////////////
+		pStaticAxisUnit[Num] = NewStatic(ID_STATIC_UNIT_1 + Num, AxisValueUnit[Num], rectAxisUnit, SS_CENTER|SS_SUNKEN);
+		rectAxisUnit.top += 22;
+		rectAxisUnit.bottom += 22;
+		//////////////////////////////////////////////////////////////////////////
+
+		//////////////////////////////////////////////////////////////////////////
+		// 轴参数的值
+		//////////////////////////////////////////////////////////////////////////
 		pEditAxis[Num] = NewEdit(ID_EDIT_1 + Num, rectEdit, ES_CENTER);
 		rectEdit.top += 22;
 		rectEdit.bottom += 22;
+		//////////////////////////////////////////////////////////////////////////
+
+		//////////////////////////////////////////////////////////////////////////
+		// 轴参数是否使用的标志
+		//////////////////////////////////////////////////////////////////////////
+		pButtonAxisFlag[Num] = NewButton(ID_CHECKBOX_1 + Num, rectAxisFlag, BS_CHECKBOX);
+		rectAxisFlag.top += 22;
+		rectAxisFlag.bottom += 22;
+		//////////////////////////////////////////////////////////////////////////
 	}
+	//////////////////////////////////////////////////////////////////////////
+
+	//////////////////////////////////////////////////////////////////////////
+	// 编辑框控件
+	//////////////////////////////////////////////////////////////////////////
+	for (int Num = 0; Num < 2; Num++)
+	{
+		SecureZeroMemory(LabelName, sizeof(LabelName));
+		SecureZeroMemory(cNum, sizeof(cNum));
+
+		sprintf(cNum, "%d. ", (Num + 1));
+		strcat(LabelName, cNum);
+		strcat(LabelName, StaticSystemNameArray[Num]);
+		//////////////////////////////////////////////////////////////////////////
+		// 系统参数的描述
+		//////////////////////////////////////////////////////////////////////////
+		pStaticAxis[Num] = NewStatic(ID_STATIC_28 + Num, LabelName, rectSystem, SS_SIMPLE|SS_SUNKEN);
+		rectSystem.top += 22;
+		rectSystem.bottom += 22;
+		//////////////////////////////////////////////////////////////////////////
+
+
+		//////////////////////////////////////////////////////////////////////////
+		// 系统参数的单位
+		//////////////////////////////////////////////////////////////////////////
+		pStaticSystemUnit[Num] = NewStatic(ID_STATIC_UNIT_28 + Num, SystemValueUnit[Num], rectSystemUnit, SS_CENTER|SS_SUNKEN);
+		rectSystemUnit.top += 22;
+		rectSystemUnit.bottom += 22;
+		//////////////////////////////////////////////////////////////////////////
+
+		//////////////////////////////////////////////////////////////////////////
+		// 系统参数的值
+		//////////////////////////////////////////////////////////////////////////
+		pEditAxis[Num] = NewEdit(ID_EDIT_28 + Num, rectSystemEdit, ES_CENTER);
+		rectSystemEdit.top += 22;
+		rectSystemEdit.bottom += 22;
+		//////////////////////////////////////////////////////////////////////////
+
+		//////////////////////////////////////////////////////////////////////////
+		// 系统参数是否使用的标志
+		//////////////////////////////////////////////////////////////////////////
+		pButtonSystemFlag[Num] = NewButton(ID_CHECKBOX_28 + Num, rectSystemFlag, BS_CHECKBOX);
+		rectSystemFlag.top += 22;
+		rectSystemFlag.bottom += 22;
+		//////////////////////////////////////////////////////////////////////////
+	}
+
+
+	//////////////////////////////////////////////////////////////////////////
+
+
+	//////////////////////////////////////////////////////////////////////////
+	// 复制按钮
+	//////////////////////////////////////////////////////////////////////////
+	CRect rectWidth;
+	GetWindowRect(&rectWidth);
+	CRect rectButton(rectWidth.Width()/2 - 35, 695, rectWidth.Width()/2 + 35, 715);
+	pButtonCopy[0] = NewButton(ID_BUTTON_1, rectButton, BS_DEFPUSHBUTTON);
 	//////////////////////////////////////////////////////////////////////////
 
 
@@ -287,7 +305,7 @@ CEdit * CPLCParameterDlg::NewEdit(int nID, CRect rect, int nStyle)
 	CEdit *pEdit = new CEdit();
 	ASSERT_VALID(pEdit);
 
-	pEdit->Create(WS_VISIBLE|WS_CHILD|nStyle, rect, this, nID);
+	pEdit->Create(WS_TABSTOP|WS_GROUP|WS_VISIBLE|WS_CHILD|ES_NOHIDESEL|nStyle, rect, this, nID);
 	
 	return pEdit;
 }
@@ -306,6 +324,16 @@ void CPLCParameterDlg::OnClose()
 		{
 			delete pEditAxis[Num];
 		}
+
+		if (pStaticAxisUnit[Num])
+		{
+			delete pStaticAxisUnit[Num];
+		}
+
+		if (pButtonAxisFlag[Num])
+		{
+			delete pButtonAxisFlag[Num];
+		}
 	}
 
 	for (int Num = 0; Num < 2; Num++)
@@ -319,7 +347,167 @@ void CPLCParameterDlg::OnClose()
 		{
 			delete pEditSystem[Num];
 		}
+
+		if (pStaticSystemUnit[Num])
+		{
+			delete pStaticSystemUnit[Num];
+		}
+
+		if (pButtonSystemFlag[Num])
+		{
+			delete pButtonSystemFlag[Num];
+		}
+	}
+	
+	for (int Num = 0; Num < 1; Num++)
+	{
+		if (pButtonCopy[Num])
+		{
+			delete pButtonCopy[Num];
+		}
+	}
+	CDialog::OnClose();
+}
+
+CButton* CPLCParameterDlg::NewButton(int nID, CRect rect, int nStyle)
+{
+	CButton *pButton = new CButton();
+	ASSERT_VALID(pButton);
+
+	pButton->Create("Copy", WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON|nStyle, rect, this, nID);
+
+	return pButton;
+}
+
+void CPLCParameterDlg::OnBtnCopy()
+{
+	CString csContent(""), csTemp("");
+	GetDlgItem(ID_EDIT_1)->GetWindowText(csTemp);
+	csContent += csTemp;
+	csContent += "\t";
+	GetDlgItem(ID_EDIT_2)->GetWindowText(csTemp);
+	csContent += csTemp;
+	csContent += "\t";
+	GetDlgItem(ID_EDIT_3)->GetWindowText(csTemp);
+	csContent += csTemp;
+	csContent += "\t";
+	GetDlgItem(ID_EDIT_4)->GetWindowText(csTemp);
+	csContent += csTemp;
+	csContent += "\t";
+	GetDlgItem(ID_EDIT_5)->GetWindowText(csTemp);
+	csContent += csTemp;
+	csContent += "\r\n";
+	GetDlgItem(ID_EDIT_6)->GetWindowText(csTemp);
+	csContent += csTemp;
+	csContent += "\t";
+	GetDlgItem(ID_EDIT_7)->GetWindowText(csTemp);
+	csContent += csTemp;
+	csContent += "\t";
+	GetDlgItem(ID_EDIT_8)->GetWindowText(csTemp);
+	csContent += csTemp;
+	csContent += "\t";
+	GetDlgItem(ID_EDIT_9)->GetWindowText(csTemp);
+	csContent += csTemp;
+	csContent += "\t";
+	GetDlgItem(ID_EDIT_10)->GetWindowText(csTemp);
+	csContent += csTemp;
+	csContent += "\r\n";
+	GetDlgItem(ID_EDIT_11)->GetWindowText(csTemp);
+	csContent += csTemp;
+	csContent += "\t";
+	GetDlgItem(ID_EDIT_12)->GetWindowText(csTemp);
+	csContent += csTemp;
+	csContent += "\t";
+	GetDlgItem(ID_EDIT_13)->GetWindowText(csTemp);
+	csContent += csTemp;
+	csContent += "\t";
+	GetDlgItem(ID_EDIT_14)->GetWindowText(csTemp);
+	csContent += csTemp;
+	csContent += "\t";
+	GetDlgItem(ID_EDIT_15)->GetWindowText(csTemp);
+	csContent += csTemp;
+	csContent += "\r\n";
+	GetDlgItem(ID_EDIT_16)->GetWindowText(csTemp);
+	csContent += csTemp;
+	csContent += "\t";
+	GetDlgItem(ID_EDIT_17)->GetWindowText(csTemp);	
+	csContent += csTemp;
+	csContent += "\t";
+	GetDlgItem(ID_EDIT_18)->GetWindowText(csTemp);
+	csContent += csTemp;
+	csContent += "\t";
+	GetDlgItem(ID_EDIT_19)->GetWindowText(csTemp);
+	csContent += csTemp;
+	csContent += "\t";
+	GetDlgItem(ID_EDIT_20)->GetWindowText(csTemp);
+	csContent += csTemp;
+	csContent += "\r\n";
+	GetDlgItem(ID_EDIT_21)->GetWindowText(csTemp);	
+	csContent += csTemp;
+	csContent += "\t";
+	GetDlgItem(ID_EDIT_22)->GetWindowText(csTemp);
+	csContent += csTemp;
+	csContent += "\t";
+	GetDlgItem(ID_EDIT_23)->GetWindowText(csTemp);
+	csContent += csTemp;
+	csContent += "\t";
+	GetDlgItem(ID_EDIT_24)->GetWindowText(csTemp);
+	csContent += csTemp;
+	csContent += "\t";
+	GetDlgItem(ID_EDIT_25)->GetWindowText(csTemp);
+	csContent += csTemp;
+	csContent += "\r\n";
+	GetDlgItem(ID_EDIT_26)->GetWindowText(csTemp);
+	csContent += csTemp;
+	csContent += "\t";
+	GetDlgItem(ID_EDIT_27)->GetWindowText(csTemp);
+	csContent += csTemp;
+	csContent += "\t";
+	GetDlgItem(ID_EDIT_28)->GetWindowText(csTemp);
+	csContent += csTemp;
+	csContent += "\t";
+	GetDlgItem(ID_EDIT_29)->GetWindowText(csTemp);
+	csContent += csTemp;
+	csContent += "\t";
+
+	if (CopyStringToClipboard(AfxGetMainWnd()->m_hWnd, csContent))
+	{
+		MessageBox(csContent, "信息提示", MB_OK|MB_ICONINFORMATION);
+	}	
+}
+
+BOOL CPLCParameterDlg::CopyStringToClipboard(HWND hWnd, LPCTSTR lpszText)
+{
+	HGLOBAL hglbCopy = NULL;
+	LPTSTR lptstrCopy;
+
+	int nlen = strlen(lpszText);
+	if (nlen == 0)
+	{
+		return FALSE;
 	}
 
-	CDialog::OnClose();
+	if (!::OpenClipboard(hWnd))
+	{
+		return FALSE;
+	} 
+	
+	hglbCopy = GlobalAlloc(GMEM_DDESHARE, (nlen + 1)*sizeof(char));
+
+	if (hglbCopy == NULL)
+	{
+		CloseClipboard();
+		return FALSE;
+	}
+
+	EmptyClipboard();
+
+	lptstrCopy = (LPTSTR)GlobalLock(hglbCopy);
+	memcpy(lptstrCopy, lpszText, nlen);
+	lptstrCopy[nlen] = (TCHAR)0;
+	SetClipboardData(CF_TEXT, hglbCopy);
+	CloseClipboard();
+	return TRUE;
+
+	return 0;
 }

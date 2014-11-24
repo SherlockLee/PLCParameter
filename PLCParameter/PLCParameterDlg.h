@@ -110,6 +110,7 @@ enum BUTTON_ID
 	ID_BUTTON_1 = 30000,
 };
 
+#if 0
 enum CHECKBOX_ID
 {
 	ID_CHECKBOX_1 = 31000,
@@ -142,6 +143,8 @@ enum CHECKBOX_ID
 	ID_CHECKBOX_28,
 	ID_CHECKBOX_29,
 };
+#endif
+
 // CPLCParameterDlg ¶Ô»°¿ò
 class CPLCParameterDlg : public CDialog
 {
@@ -170,7 +173,10 @@ protected:
 public:
 	CStatic * NewStatic(int nID, char * cName, CRect rect, int nStyle);
 	CEdit * NewEdit(int nID, CRect rect, int nStyle);
-	afx_msg void OnClose();
-	CButton* NewButton(int nID, CRect rect, int nStyle);
+	CButton* NewButton(int nID, CRect rect, int nStyle, CString csButtonText);
 	BOOL CopyStringToClipboard(HWND hWnd, LPCTSTR lpszText);
+	afx_msg void OnDestroy();
+	BOOL IsFileExist(CString csFilePath);
+	CString GetExePath(void);
+	void CreateConfigFile();
 };
